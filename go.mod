@@ -1,4 +1,4 @@
-module triple-pci-service
+module github.com/pavulla-tech/kampfumo
 
 go 1.24.1
 
@@ -19,5 +19,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.29.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.17 // indirect
-	github.com/aws/smithy-go v1.22.2 // indirect
+	github.com/aws/smithy-go v1.22.3 // indirect
 )
