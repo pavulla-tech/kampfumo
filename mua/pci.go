@@ -9,12 +9,82 @@ import (
 	"io"
 )
 
+type EncriptionClient struct {
+	privateKey *rsa.PrivateKey
+	publicKey  *rsa.PublicKey
+}
+
+func NewEncriptionClient(privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) *EncriptionClient {
+	return &EncriptionClient{privateKey: privateKey, publicKey: publicKey}
+}
+
+// Gerar chave AES-256 para a sessão
+func generateSessionKey() ([]byte, error) {
+	key := make([]byte, 32) // AES-256
+	if _, err := rand.Read(key); err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+// Encriptar dados com AES-GCM
+func encryptData(data []byte, key []byte) ([]byte, []byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = rand.Read(nonce); err != nil {
+		return nil, nil, err
+	}
+
+	encrypted := gcm.Seal(nil, nonce, data, nil)
+	return encrypted, nonce, nil
+}
+
+func encryptSessionKey(sessionKey []byte, publicKey *rsa.PublicKey) ([]byte, error) {
+	encryptedSessionKey, err := rsa.EncryptOAEP(
+		sha256.New(),
+		rand.Reader,
+		publicKey,
+		sessionKey,
+		nil, // Label (deixe vazio)
+	)
+	return encryptedSessionKey, err
+}
+
+func (c *EncriptionClient) EncriptDataForTransport(data []byte) (encryptedData []byte, nonce []byte, encryptedSessionKey []byte, err error) {
+	sessionKey, err := generateSessionKey()
+	if err != nil {
+		return 
+	}
+	encryptedData, nonce, err = encryptData(data, sessionKey)
+	if err != nil {
+		return 
+	}
+	encryptedSessionKey, err = encryptSessionKey(sessionKey, c.publicKey)
+	if err != nil {
+		return 
+	}
+
+	err = nil
+
+	return 
+	
+}
+
 // Desencriptar chave de sessão com RSA (chave privada do backend)
-func DecryptSessionKey(encryptedSessionKey []byte, privateKey *rsa.PrivateKey) ([]byte, error) {
+func (c *EncriptionClient) DecryptSessionKey(encryptedSessionKey []byte) ([]byte, error) {
 	sessionKey, err := rsa.DecryptOAEP(
 		sha256.New(),
 		rand.Reader,
-		privateKey,
+		c.privateKey,
 		encryptedSessionKey,
 		nil, // Label deve corresponder ao do cliente
 	)
@@ -22,7 +92,7 @@ func DecryptSessionKey(encryptedSessionKey []byte, privateKey *rsa.PrivateKey) (
 }
 
 // Desencriptar dados com AES-GCM
-func DecryptDataForUsage(encryptedData, nonce, key []byte) ([]byte, error) {
+func (c *EncriptionClient) DecryptDataForUsage(encryptedData, nonce, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
